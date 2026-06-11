@@ -1,0 +1,6 @@
+{
+  "name": "Alkansya",
+  "description": "Privacy-first, offline financial tracker for the Philippines with automated SMS parsing and starter balances.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
