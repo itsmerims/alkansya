@@ -39,6 +39,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
@@ -55,7 +58,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -610,7 +612,7 @@ fun LoginRegistrationScreen(
                 contentAlignment = Alignment.Center
             ) {
                 androidx.compose.foundation.Image(
-                    painter = androidx.compose.ui.res.painterResource(R.drawable.logo),
+                    painter = androidx.compose.ui.res.painterResource(R.drawable.alkansya_icon),
                     contentDescription = "Alkansya Logo",
                     modifier = Modifier.size(80.dp)
                 )
@@ -1067,13 +1069,16 @@ fun AddAccountPage(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FlowRowLayout(
+    modifier: Modifier = Modifier,
     spacing: androidx.compose.ui.unit.Dp = 8.dp,
+    maxItemsInEachRow: Int = Int.MAX_VALUE,
     content: @Composable () -> Unit
 ) {
     FlowRow(
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(spacing),
         verticalArrangement = Arrangement.spacedBy(spacing),
-        modifier = Modifier.fillMaxWidth(),
+        maxItemsInEachRow = maxItemsInEachRow,
         content = { content() }
     )
 }
@@ -1668,7 +1673,9 @@ fun WalletScreen(
 
                             // Display columns box
                             FlowRowLayout(
-                                spacing = 10.dp
+                                modifier = Modifier.fillMaxWidth(),
+                                spacing = 10.dp,
+                                maxItemsInEachRow = 2
                             ) {
                                 sortedAccounts.forEachIndexed { idx, acc ->
                                     val providerItem = remember(acc.providerName) { FinancialCatalog.findById(acc.providerName) }
@@ -1691,24 +1698,14 @@ fun WalletScreen(
                                                     }
                                                 }
                                             }
-                                            .offset {
-                                                if (isCurrentlyDragging) {
-                                                    IntOffset(dragOffset.x.roundToInt(), dragOffset.y.roundToInt())
-                                                } else {
-                                                    IntOffset.Zero
-                                                }
-                                            }
                                             .graphicsLayer {
                                                 if (isCurrentlyDragging) {
-                                                    scaleX = 1.1f
-                                                    scaleY = 1.1f
-                                                    alpha = 0.85f
-                                                    shadowElevation = 12.dp.toPx()
+                                                    alpha = 0f
                                                 }
                                             }
                                             .border(
-                                                if (rearrangeMode) 2.dp else 0.5.dp,
-                                                if (rearrangeMode) cardTheme.textColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                                if (rearrangeMode && !isCurrentlyDragging) 2.dp else 0.5.dp,
+                                                if (rearrangeMode && !isCurrentlyDragging) cardTheme.textColor else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                                 RoundedCornerShape(16.dp)
                                             )
                                             .pointerInput(rearrangeMode, sortedAccounts) {
@@ -1867,6 +1864,76 @@ fun WalletScreen(
                             fontWeight = FontWeight.Black,
                             color = Color.White
                         )
+                    }
+                }
+            }
+        }
+
+        // Overlay for dragged card to prevent clipping
+        draggingAccount?.let { acc ->
+            val providerItem = remember(acc.providerName) { FinancialCatalog.findById(acc.providerName) }
+            val cardTheme = remember(providerItem) {
+                providerItem?.getCardTheme() ?: CardTheme(Color(0xFF0F172A), Color.White)
+            }
+            
+            val startBounds = activeCardStartBounds
+            if (startBounds != null) {
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                (startBounds.left + dragOffset.x).roundToInt(),
+                                (startBounds.top + dragOffset.y).roundToInt()
+                            )
+                        }
+                        .graphicsLayer {
+                            scaleX = 1.1f
+                            scaleY = 1.1f
+                            alpha = 0.85f
+                            shadowElevation = 12.dp.toPx()
+                        }
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .width(startBounds.width.dp)
+                            .height(startBounds.height.dp)
+                            .border(
+                                2.dp,
+                                cardTheme.textColor,
+                                RoundedCornerShape(16.dp)
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = cardTheme.backgroundColor.copy(alpha = 0.95f)
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text(
+                                text = providerItem?.displayName ?: "Digital Provider",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = cardTheme.textColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = acc.name,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = cardTheme.textColor.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = formatCurrency(acc.currentBalance, acc.currency),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = cardTheme.textColor
+                            )
+                        }
                     }
                 }
             }
